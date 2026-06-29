@@ -1,5 +1,5 @@
 'use strict';
-const CACHE      = 'glade-v2';
+const CACHE      = 'glade-v3';
 const FONT_CACHE = 'glade-fonts-v1';
 
 const SHELL = [
@@ -14,7 +14,7 @@ const SHELL = [
   'assets/flower3.png',
   'assets/flower4.png',
   'assets/flower6.png',
-  'assets/sprout.png',
+  'assets/clover.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/vendor/react.production.min.js',

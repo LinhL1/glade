@@ -14,7 +14,7 @@ manifest.json       ← Web App Manifest
 sw.js               ← Service worker
 assets/
   flower1–4,6.png   ← flower images (flower5 intentionally skipped)
-  sprout.png        ← source image used for app icons
+  clover.png        ← source image used for app icons
   icon-192.png      ← PWA icon (generated from sprout.png)
   icon-512.png      ← PWA icon (generated from sprout.png)
   vendor/
@@ -41,7 +41,7 @@ Add the file to `assets/` and append its path to the `FLOWERS` array at the top 
 ## PWA setup
 - **Manifest:** `manifest.json` at repo root. `start_url: "./"` and `scope: "./"` are relative to the manifest, which works for both GitHub Pages and local dev.
 - **Service worker:** `sw.js` at repo root. Cache name: `glade-v1` (bump this string when deploying breaking changes to force a cache refresh). App shell is precached on install. Supabase API calls bypass the cache entirely. Google Fonts use stale-while-revalidate.
-- **Icons:** Generated from `assets/sprout.png` using PowerShell System.Drawing. To regenerate after updating sprout.png, run the resize script (see conversation history).
+- **Icons:** Generated from `assets/clover.png` using PowerShell System.Drawing. To regenerate after updating clover.png, run the resize script (see conversation history).
 - **Install prompt:** Android: `beforeinstallprompt` is captured; an "install app" button appears on the welcome screen. iOS: no prompt API — user must use Share → Add to Home Screen manually.
 
 ## Hosting — GitHub Pages
