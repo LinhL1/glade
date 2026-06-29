@@ -12,6 +12,15 @@ const FLOWERS = [
   'assets/flower6.png',
 ];
 
+// ── Push notifications ────────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BHynnjiZ6H7rr0WksiY_eukxZdEY9fKoX5zVYBFSEAs374uCCWpxrfijjXf-J2L8zi4w8CoM-wqf21YHOSHFuZo';
+
+function urlBase64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
 function buildFlower(seed, spId, size, density) {
   const src = FLOWERS[seed % FLOWERS.length];
   return h('img', { src, width: size, height: size, style: { display: 'block', objectFit: 'contain' } });
@@ -49,7 +58,9 @@ function LoadingScreen() {
 
 // ── Welcome ──────────────────────────────────────────────────────────────────
 
-function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall }) {
+function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall, notifPerm, pushSub, onSubscribe, onTestNotif }) {
+  const notifSupported = typeof Notification !== 'undefined' && 'PushManager' in window;
+  const subBtn = { marginTop: '10px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' };
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
       h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
@@ -76,11 +87,15 @@ function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onIn
         className: 'hov-subtle',
         style: { marginTop: '18px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
       }, 'view garden'),
-      installable && h('button', {
-        onClick: onInstall,
-        className: 'hov-subtle',
-        style: { marginTop: '10px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
-      }, 'install app')
+      installable && h('button', { onClick: onInstall, className: 'hov-subtle', style: subBtn }, 'install app'),
+      notifSupported && notifPerm === 'default' &&
+        h('button', { onClick: onSubscribe, className: 'hov-subtle', style: subBtn }, 'enable daily reminders'),
+      notifSupported && notifPerm === 'granted' &&
+        h('button', { onClick: onTestNotif, className: 'hov-subtle', style: subBtn }, 'test notification'),
+      notifSupported && notifPerm === 'granted' && pushSub &&
+        h('button', { onClick: () => navigator.clipboard.writeText(pushSub), className: 'hov-subtle', style: { ...subBtn, marginTop: '4px', fontSize: '11px', color: '#a08040' } }, 'copy subscription ↗'),
+      notifSupported && notifPerm === 'denied' &&
+        h('div', { style: { marginTop: '10px', alignSelf: 'center', fontSize: '11px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b08050', opacity: 0.7 } }, 'Notifications blocked in settings')
     )
   );
 }
@@ -320,11 +335,54 @@ function App() {
   const [installable, setInstallable] = useState(false);
   const installPrompt = useRef(null);
 
+  const [notifPerm, setNotifPerm] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  );
+  const [pushSub, setPushSub] = useState(null);
+
   // Capture the install prompt on Android (iOS uses Share → Add to Home Screen)
   useEffect(() => {
     const handler = e => { e.preventDefault(); installPrompt.current = e; setInstallable(true); };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  // Restore existing push subscription on mount
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    navigator.serviceWorker.ready
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => { if (sub) setPushSub(JSON.stringify(sub)); })
+      .catch(() => {});
+  }, []);
+
+  const subscribe = useCallback(async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPerm(perm);
+      if (perm !== 'granted') return;
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+      setPushSub(JSON.stringify(sub));
+    } catch (e) {
+      console.error('Push subscribe failed:', e);
+    }
+  }, []);
+
+  const testNotif = useCallback(async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('Glade', {
+        body: 'Your garden is waiting. What are you grateful for?',
+        icon: 'assets/icon-192.png',
+        badge: 'assets/icon-192.png',
+      });
+    } catch (e) {
+      console.error('Test notification failed:', e);
+    }
   }, []);
 
   // Load entries from IndexedDB on mount
@@ -377,7 +435,7 @@ function App() {
 
   if (!entriesReady) return h(LoadingScreen, null);
 
-  if (screen === 'welcome')  return h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install });
+  if (screen === 'welcome')  return h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install, notifPerm, pushSub, onSubscribe: subscribe, onTestNotif: testNotif });
   if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
   if (screen === 'saved')    return h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
   if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
