@@ -2,11 +2,6 @@
 const h = React.createElement;
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const sb = window.supabase.createClient(
-  'https://vpicbkvpfftqdqmyyqju.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwaWNia3ZwZmZ0cWRxbXl5cWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MDg0MDgsImV4cCI6MjA5Nzk4NDQwOH0.VHeHSnyyWtAnuT-VEhPPYFFYQL4RgcK2oK0wvB8zkLg'
-);
-
 // Add more filenames here to expand the collection
 const FLOWERS = [
   'assets/flower1.png',
@@ -38,53 +33,6 @@ function Shell({ children }) {
   return h('div', { style: { minHeight: '100dvh', display: 'flex', alignItems: 'stretch', justifyContent: 'center', background: '#e3c87a' } },
     h('div', { style: { position: 'relative', width: 'min(448px,100vw)', minHeight: '100dvh', background: '#e3c87a', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid rgba(0,0,0,.07)', borderRight: '1px solid rgba(0,0,0,.07)' } },
       children
-    )
-  );
-}
-
-// ── Sign In ──────────────────────────────────────────────────────────────────
-
-function SignInScreen() {
-  const [email, setEmail] = useState('');
-  const [sent,  setSent]  = useState(false);
-  const [busy,  setBusy]  = useState(false);
-  const [err,   setErr]   = useState('');
-
-  const send = async () => {
-    const addr = email.trim();
-    if (!addr) return;
-    setBusy(true);
-    setErr('');
-    const { error } = await sb.auth.signInWithOtp({
-      email: addr,
-      options: { emailRedirectTo: window.location.href.split('#')[0] },
-    });
-    setBusy(false);
-    if (error) setErr(error.message);
-    else setSent(true);
-  };
-
-  const inp = { width: '100%', background: 'none', border: 'none', outline: 'none', color: '#1a1206', fontSize: '17px', letterSpacing: '.005em' };
-  const btn = { width: '100%', textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '14px', letterSpacing: '.24em', textTransform: 'uppercase', borderRadius: '999px', padding: '16px', background: '#1a1206', color: '#e3c87a', transition: 'opacity .3s', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.55 : 1 };
-
-  return h(Shell, null,
-    h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
-      h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
-      h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center' } },
-        sent
-          ? h('div', { style: { textAlign: 'center', animation: 'fadeIn .5s ease' } },
-              h('div', { style: { fontFamily: "'Space Grotesk'", fontSize: '26px', color: '#1a1206', letterSpacing: '.01em' } }, 'Check your email'),
-              h('div', { style: { fontSize: '14px', color: '#6b5020', marginTop: '10px', letterSpacing: '.01em' } }, 'We sent a link to ' + email.trim())
-            )
-          : h('div', { style: { animation: 'fadeIn .5s ease' } },
-              h('h1', { style: { fontFamily: "'Space Grotesk'", fontWeight: 400, fontSize: '27px', color: '#1a1206', letterSpacing: '-.01em', marginBottom: '36px' } }, 'Your garden awaits'),
-              h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '16px', borderBottom: '1px solid rgba(0,0,0,.2)', paddingBottom: '11px', marginBottom: '10px' } },
-                h('input', { type: 'email', value: email, onChange: e => setEmail(e.target.value), onKeyDown: e => { if (e.key === 'Enter') send(); }, placeholder: 'your@email.com', style: inp, autoFocus: true })
-              ),
-              err && h('div', { style: { fontSize: '13px', color: '#c0392b', marginBottom: '8px', letterSpacing: '.01em' } }, err),
-              h('button', { onClick: send, disabled: busy, className: busy ? '' : 'hov-action', style: { ...btn, marginTop: '28px' } }, busy ? 'sending…' : 'send magic link')
-            )
-      )
     )
   );
 }
@@ -210,7 +158,7 @@ function SavedScreen({ savedKey, entries, onCalendar }) {
 
 // ── Calendar ─────────────────────────────────────────────────────────────────
 
-function CalendarScreen({ entries, todayKey, onToday, onDayClick, onSignOut }) {
+function CalendarScreen({ entries, todayKey, onToday, onDayClick }) {
   const currentRef = useRef(null);
 
   const [nowY, nowM] = useMemo(() => {
@@ -313,10 +261,7 @@ function CalendarScreen({ entries, todayKey, onToday, onDayClick, onSignOut }) {
           )
         ),
         h('div', { style: { padding: '0 26px 60px' } },
-          monthSections,
-          h('div', { style: { marginTop: '32px', paddingTop: '20px', borderTop: '1px solid rgba(0,0,0,.1)', textAlign: 'center' } },
-            h('button', { onClick: onSignOut, className: 'hov-subtle', style: { fontSize: '11px', letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(0,0,0,.25)', transition: 'color .3s' } }, 'sign out')
-          )
+          monthSections
         )
       )
     )
@@ -360,8 +305,6 @@ function App() {
   const [now]          = useState(() => new Date());
   const todayKey       = useMemo(() => dateKey(now), [now]);
 
-  const [session,      setSession]      = useState(null);
-  const [authReady,    setAuthReady]    = useState(false);
   const [entriesReady, setEntriesReady] = useState(false);
 
   const [screen,      setScreen]      = useState('welcome');
@@ -375,25 +318,6 @@ function App() {
   const [installable, setInstallable] = useState(false);
   const installPrompt = useRef(null);
 
-  // Auth — subscribe once on mount
-  useEffect(() => {
-    sb.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthReady(true);
-    });
-
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (!session) {
-        setEntries({});
-        setEntriesReady(false);
-        setScreen('welcome');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   // Capture the install prompt on Android (iOS uses Share → Add to Home Screen)
   useEffect(() => {
     const handler = e => { e.preventDefault(); installPrompt.current = e; setInstallable(true); };
@@ -401,37 +325,20 @@ function App() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // Load entries whenever the session is established
+  // Load entries from IndexedDB on mount
   useEffect(() => {
-    if (!session) return;
-
     (async () => {
-      const { data, error } = await sb.from('entries').select('*').eq('user_id', session.user.id);
-
-      if (error || !data) {
-        // Network unavailable — fall back to IndexedDB cache
-        try {
-          const cached = await IDB.getAllEntries();
-          const obj = {};
-          cached.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
-          setEntries(obj);
-          const t = obj[todayKey];
-          if (t) { setIt0(t.items[0] || ''); setIt1(t.items[1] || ''); setIt2(t.items[2] || ''); }
-        } catch (e) { console.error(e); }
-        setEntriesReady(true);
-        return;
-      }
-
-      const obj = {};
-      data.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
-      setEntries(obj);
-      const t = obj[todayKey];
-      if (t) { setIt0(t.items[0] || ''); setIt1(t.items[1] || ''); setIt2(t.items[2] || ''); }
-
-      IDB.putEntries(data.map(r => ({ date: r.date, items: r.items, species: r.species, seed: r.seed }))).catch(console.error);
+      try {
+        const cached = await IDB.getAllEntries();
+        const obj = {};
+        cached.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
+        setEntries(obj);
+        const t = obj[todayKey];
+        if (t) { setIt0(t.items[0] || ''); setIt1(t.items[1] || ''); setIt2(t.items[2] || ''); }
+      } catch (e) { console.error(e); }
       setEntriesReady(true);
     })();
-  }, [session]);
+  }, []);
 
   const todayEntry = entries[todayKey];
   const heroFlower = useMemo(() =>
@@ -440,8 +347,6 @@ function App() {
   );
 
   const plant = useCallback(async () => {
-    if (!session) return;
-    if (!navigator.onLine) { setPlantErr("You're offline — connect to plant a new entry."); return; }
     setPlantErr('');
     const seed = (Date.now() % 1000000) + 1;
     // Avoid flowers used in the last (N-1) days so the calendar stays varied
@@ -453,19 +358,18 @@ function App() {
     const species = pool[seed % pool.length];
     const newEntry = { items: [it0.trim(), it1.trim(), it2.trim()], species, seed };
 
-    const { error } = await sb.from('entries').upsert(
-      { user_id: session.user.id, date: todayKey, ...newEntry },
-      { onConflict: 'user_id,date' }
-    );
-    if (error) { console.error(error); setPlantErr('Something went wrong — please try again.'); return; }
+    try {
+      await IDB.putEntry({ date: todayKey, ...newEntry });
+    } catch (e) {
+      console.error(e);
+      setPlantErr('Something went wrong — please try again.');
+      return;
+    }
 
-    IDB.putEntry({ date: todayKey, ...newEntry }).catch(console.error);
     setEntries(prev => ({ ...prev, [todayKey]: newEntry }));
     setSavedKey(todayKey);
     setScreen('saved');
-  }, [session, entries, todayKey, it0, it1, it2, now]);
-
-  const signOut = useCallback(() => sb.auth.signOut(), []);
+  }, [entries, todayKey, it0, it1, it2]);
 
   const install = useCallback(() => {
     if (!installPrompt.current) return;
@@ -473,14 +377,12 @@ function App() {
     installPrompt.current.userChoice.then(() => { installPrompt.current = null; setInstallable(false); });
   }, []);
 
-  if (!authReady)                  return h(LoadingScreen, null);
-  if (!session)                    return h(SignInScreen, null);
-  if (!entriesReady)               return h(LoadingScreen, null);
+  if (!entriesReady) return h(LoadingScreen, null);
 
   if (screen === 'welcome')  return h(WelcomeScreen,  { heroFlower, todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install });
   if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
   if (screen === 'saved')    return h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
-  if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); }, onSignOut: signOut });
+  if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
   if (screen === 'day')      return h(DayScreen,      { dayKey, entries, onBack: () => setScreen('calendar') });
   return null;
 }

@@ -1,5 +1,5 @@
 'use strict';
-const CACHE      = 'glade-v1';
+const CACHE      = 'glade-v2';
 const FONT_CACHE = 'glade-fonts-v1';
 
 const SHELL = [
@@ -19,7 +19,6 @@ const SHELL = [
   'assets/icon-512.png',
   'assets/vendor/react.production.min.js',
   'assets/vendor/react-dom.production.min.js',
-  'assets/vendor/supabase.min.js',
 ];
 
 self.addEventListener('install', e => {
