@@ -72,25 +72,23 @@ function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onIn
   const active  = notifSupported && notifPerm === 'granted';
   const denied  = notifSupported && notifPerm === 'denied';
   const pending = notifSupported && notifPerm === 'default';
+  const [showCopy, setShowCopy] = useState(false);
 
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
-      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-        notifSupported
-          ? h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' } },
-              h('button', {
-                onClick: active ? onTestNotif : pending ? onSubscribe : null,
-                style: { padding: '4px', cursor: (active || pending) ? 'pointer' : 'default', transition: 'opacity .3s' },
-                title: active ? 'Send test notification' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
-              }, h(BellIcon, { active, denied })),
-              active && pushSub && h('button', {
-                onClick: () => navigator.clipboard.writeText(pushSub),
-                style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
-              }, 'copy sub')
-            )
-          : h('div', { style: { width: 28 } }),
-        h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
-        h('div', { style: { width: 28 } })
+      h('div', { style: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '36px' } },
+        notifSupported && h('div', { style: { position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' } },
+          h('button', {
+            onClick: active ? () => setShowCopy(v => !v) : pending ? onSubscribe : null,
+            style: { padding: '4px', cursor: (active || pending) ? 'pointer' : 'default', transition: 'opacity .3s' },
+            title: active ? 'Toggle subscription info' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
+          }, h(BellIcon, { active, denied })),
+          active && pushSub && showCopy && h('button', {
+            onClick: () => { navigator.clipboard.writeText(pushSub); setShowCopy(false); },
+            style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
+          }, 'copy sub')
+        ),
+        h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade')
       ),
       h('div', { style: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
         h('div', { style: { animation: 'breathe 9s ease-in-out infinite' } },
