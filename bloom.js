@@ -101,7 +101,7 @@ function LoadingScreen() {
 
 // ── Welcome ──────────────────────────────────────────────────────────────────
 
-function WelcomeScreen({ heroFlower, todayEntry, now, onStart, onCalendar }) {
+function WelcomeScreen({ heroFlower, todayEntry, now, onStart, onCalendar, installable, onInstall }) {
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
       h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
@@ -125,14 +125,19 @@ function WelcomeScreen({ heroFlower, todayEntry, now, onStart, onCalendar }) {
         onClick: onCalendar,
         className: 'hov-subtle',
         style: { marginTop: '18px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
-      }, 'view garden')
+      }, 'view garden'),
+      installable && h('button', {
+        onClick: onInstall,
+        className: 'hov-subtle',
+        style: { marginTop: '10px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
+      }, 'install app')
     )
   );
 }
 
 // ── Entry ────────────────────────────────────────────────────────────────────
 
-function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue, now }) {
+function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue, now, err }) {
   const canContinue = !!(it0.trim() && it1.trim() && it2.trim());
   const filled = [it0, it1, it2].filter(x => x.trim()).length;
 
@@ -172,7 +177,8 @@ function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue
         onClick: canContinue ? onContinue : undefined,
         className: canContinue ? 'hov-action' : '',
         style: btnStyle
-      }, btnLabel)
+      }, btnLabel),
+      err && h('div', { style: { marginTop: '12px', fontSize: '13px', color: '#c0392b', textAlign: 'center', letterSpacing: '.01em' } }, err)
     )
   );
 }
@@ -322,7 +328,6 @@ function DayScreen({ dayKey, entries, onBack }) {
   if (!entry) return null;
   const dd     = parseKey(dayKey);
   const flower = buildFlower(entry.seed, entry.species, 224, 1);
-  const species = (SPECIES[entry.species] || SPECIES[0]).name;
 
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '30px 30px 34px', animation: 'fadeIn .45s ease' } },
@@ -342,8 +347,7 @@ function DayScreen({ dayKey, entries, onBack }) {
           )
         )
       ),
-      h('div', { style: { flex: 1 } }),
-      h('div', { style: { textAlign: 'center', fontSize: '12px', letterSpacing: '.22em', textTransform: 'uppercase', color: 'rgba(0,0,0,.35)' } }, species)
+      h('div', { style: { flex: 1 } })
     )
   );
 }
@@ -358,13 +362,16 @@ function App() {
   const [authReady,    setAuthReady]    = useState(false);
   const [entriesReady, setEntriesReady] = useState(false);
 
-  const [screen,   setScreen]   = useState('welcome');
-  const [it0,      setIt0]      = useState('');
-  const [it1,      setIt1]      = useState('');
-  const [it2,      setIt2]      = useState('');
-  const [entries,  setEntries]  = useState({});
-  const [dayKey,   setDayKey]   = useState(null);
-  const [savedKey, setSavedKey] = useState(null);
+  const [screen,      setScreen]      = useState('welcome');
+  const [it0,         setIt0]         = useState('');
+  const [it1,         setIt1]         = useState('');
+  const [it2,         setIt2]         = useState('');
+  const [entries,     setEntries]     = useState({});
+  const [dayKey,      setDayKey]      = useState(null);
+  const [savedKey,    setSavedKey]    = useState(null);
+  const [plantErr,    setPlantErr]    = useState('');
+  const [installable, setInstallable] = useState(false);
+  const installPrompt = useRef(null);
 
   // Auth — subscribe once on mount
   useEffect(() => {
@@ -385,19 +392,41 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Capture the install prompt on Android (iOS uses Share → Add to Home Screen)
+  useEffect(() => {
+    const handler = e => { e.preventDefault(); installPrompt.current = e; setInstallable(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   // Load entries whenever the session is established
   useEffect(() => {
     if (!session) return;
 
     (async () => {
       const { data, error } = await sb.from('entries').select('*').eq('user_id', session.user.id);
-      if (error) { console.error(error); setEntriesReady(true); return; }
+
+      if (error || !data) {
+        // Network unavailable — fall back to IndexedDB cache
+        try {
+          const cached = await IDB.getAllEntries();
+          const obj = {};
+          cached.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
+          setEntries(obj);
+          const t = obj[todayKey];
+          if (t) { setIt0(t.items[0] || ''); setIt1(t.items[1] || ''); setIt2(t.items[2] || ''); }
+        } catch (e) { console.error(e); }
+        setEntriesReady(true);
+        return;
+      }
 
       const obj = {};
-      if (data) data.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
+      data.forEach(row => { obj[row.date] = { items: row.items, species: row.species, seed: row.seed }; });
       setEntries(obj);
       const t = obj[todayKey];
       if (t) { setIt0(t.items[0] || ''); setIt1(t.items[1] || ''); setIt2(t.items[2] || ''); }
+
+      IDB.putEntries(data.map(r => ({ date: r.date, items: r.items, species: r.species, seed: r.seed }))).catch(console.error);
       setEntriesReady(true);
     })();
   }, [session]);
@@ -410,6 +439,8 @@ function App() {
 
   const plant = useCallback(async () => {
     if (!session) return;
+    if (!navigator.onLine) { setPlantErr("You're offline — connect to plant a new entry."); return; }
+    setPlantErr('');
     const seed = (Date.now() % 1000000) + 1;
     const species = seed % FLOWERS.length;
     const newEntry = { items: [it0.trim(), it1.trim(), it2.trim()], species, seed };
@@ -418,8 +449,9 @@ function App() {
       { user_id: session.user.id, date: todayKey, ...newEntry },
       { onConflict: 'user_id,date' }
     );
-    if (error) { console.error(error); return; }
+    if (error) { console.error(error); setPlantErr('Something went wrong — please try again.'); return; }
 
+    IDB.putEntry({ date: todayKey, ...newEntry }).catch(console.error);
     setEntries(prev => ({ ...prev, [todayKey]: newEntry }));
     setSavedKey(todayKey);
     setScreen('saved');
@@ -427,12 +459,18 @@ function App() {
 
   const signOut = useCallback(() => sb.auth.signOut(), []);
 
+  const install = useCallback(() => {
+    if (!installPrompt.current) return;
+    installPrompt.current.prompt();
+    installPrompt.current.userChoice.then(() => { installPrompt.current = null; setInstallable(false); });
+  }, []);
+
   if (!authReady)                  return h(LoadingScreen, null);
   if (!session)                    return h(SignInScreen, null);
   if (!entriesReady)               return h(LoadingScreen, null);
 
-  if (screen === 'welcome')  return h(WelcomeScreen,  { heroFlower, todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar') });
-  if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant });
+  if (screen === 'welcome')  return h(WelcomeScreen,  { heroFlower, todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install });
+  if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
   if (screen === 'saved')    return h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
   if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); }, onSignOut: signOut });
   if (screen === 'day')      return h(DayScreen,      { dayKey, entries, onBack: () => setScreen('calendar') });
