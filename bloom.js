@@ -29,9 +29,9 @@ function fmtShort(d)   { return MONTHS_SHORT[d.getMonth()] + ' ' + d.getDate(); 
 
 // ── Shell wrapper ────────────────────────────────────────────────────────────
 
-function Shell({ children }) {
-  return h('div', { style: { minHeight: '100dvh', display: 'flex', alignItems: 'stretch', justifyContent: 'center', background: '#e3c87a' } },
-    h('div', { style: { position: 'relative', width: 'min(448px,100vw)', minHeight: '100dvh', background: '#e3c87a', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid rgba(0,0,0,.07)', borderRight: '1px solid rgba(0,0,0,.07)' } },
+function Shell({ children, bg = '#e3c87a' }) {
+  return h('div', { style: { minHeight: '100dvh', display: 'flex', alignItems: 'stretch', justifyContent: 'center', background: bg } },
+    h('div', { style: { position: 'relative', width: 'min(448px,100vw)', minHeight: '100dvh', background: bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid rgba(0,0,0,.07)', borderRight: '1px solid rgba(0,0,0,.07)' } },
       children
     )
   );
@@ -49,13 +49,15 @@ function LoadingScreen() {
 
 // ── Welcome ──────────────────────────────────────────────────────────────────
 
-function WelcomeScreen({ heroFlower, todayEntry, now, onStart, onCalendar, installable, onInstall }) {
+function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall }) {
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
       h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
       h('div', { style: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
         h('div', { style: { animation: 'breathe 9s ease-in-out infinite' } },
-          h('div', { style: { animation: 'spinslow 200s linear infinite' } }, heroFlower)
+          h('div', { style: { animation: 'spinslow 20s linear infinite', width: '296px', height: '296px' } },
+            h('img', { src: 'assets/clover-home.png', width: 296, height: 296, style: { display: 'block', objectFit: 'contain' } })
+          )
         )
       ),
       h('div', { style: { textAlign: 'center' } },
@@ -251,13 +253,13 @@ function CalendarScreen({ entries, todayKey, onToday, onDayClick }) {
     );
   });
 
-  return h(Shell, null,
+  return h(Shell, { bg: '#a0be7d' },
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
       h('div', { style: { flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', scrollPaddingTop: '76px' } },
-        h('div', { style: { position: 'sticky', top: 0, zIndex: 2, background: '#e3c87a', padding: '26px 26px 16px', borderBottom: '1px solid rgba(0,0,0,.08)' } },
+        h('div', { style: { position: 'sticky', top: 0, zIndex: 2, background: '#a0be7d', padding: '26px 26px 16px', borderBottom: '1px solid rgba(0,0,0,.08)' } },
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-            h('button', { onClick: onToday, className: 'hov-nav', style: { fontSize: '13px', letterSpacing: '.22em', textTransform: 'uppercase', color: '#7a5c28', transition: 'color .3s' } }, '← today'),
-            h('span', { style: { fontSize: '11.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30' } }, 'your garden')
+            h('button', { onClick: onToday, className: 'hov-nav', style: { fontSize: '13px', letterSpacing: '.22em', textTransform: 'uppercase', color: '#251d0e', transition: 'color .3s' } }, '← today'),
+            h('span', { style: { fontSize: '11.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#251d0e' } }, 'your garden')
           )
         ),
         h('div', { style: { padding: '0 26px 60px' } },
@@ -341,10 +343,6 @@ function App() {
   }, []);
 
   const todayEntry = entries[todayKey];
-  const heroFlower = useMemo(() =>
-    buildFlower(todayEntry ? todayEntry.seed : 424242, todayEntry ? todayEntry.species : 0, 296, 1),
-    [todayEntry]
-  );
 
   const plant = useCallback(async () => {
     setPlantErr('');
@@ -379,7 +377,7 @@ function App() {
 
   if (!entriesReady) return h(LoadingScreen, null);
 
-  if (screen === 'welcome')  return h(WelcomeScreen,  { heroFlower, todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install });
+  if (screen === 'welcome')  return h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install });
   if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
   if (screen === 'saved')    return h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
   if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
