@@ -58,12 +58,40 @@ function LoadingScreen() {
 
 // ── Welcome ──────────────────────────────────────────────────────────────────
 
+function BellIcon({ active, denied }) {
+  const color = denied ? 'rgba(74,53,8,0.25)' : active ? '#4a3508' : 'rgba(74,53,8,0.4)';
+  return h('svg', { viewBox: '0 0 24 24', width: 20, height: 20, fill: active ? color : 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { display: 'block', transition: 'fill .3s,stroke .3s' } },
+    h('path', { d: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9' }),
+    h('path', { d: 'M13.73 21a2 2 0 0 1-3.46 0' }),
+    denied && h('line', { x1: 3, y1: 3, x2: 21, y2: 21 })
+  );
+}
+
 function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall, notifPerm, pushSub, onSubscribe, onTestNotif }) {
   const notifSupported = typeof Notification !== 'undefined' && 'PushManager' in window;
-  const subBtn = { marginTop: '10px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' };
+  const active  = notifSupported && notifPerm === 'granted';
+  const denied  = notifSupported && notifPerm === 'denied';
+  const pending = notifSupported && notifPerm === 'default';
+
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
-      h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        notifSupported
+          ? h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' } },
+              h('button', {
+                onClick: active ? onTestNotif : pending ? onSubscribe : null,
+                style: { padding: '4px', cursor: (active || pending) ? 'pointer' : 'default', transition: 'opacity .3s' },
+                title: active ? 'Send test notification' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
+              }, h(BellIcon, { active, denied })),
+              active && pushSub && h('button', {
+                onClick: () => navigator.clipboard.writeText(pushSub),
+                style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
+              }, 'copy sub')
+            )
+          : h('div', { style: { width: 28 } }),
+        h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade'),
+        h('div', { style: { width: 28 } })
+      ),
       h('div', { style: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
         h('div', { style: { animation: 'breathe 9s ease-in-out infinite' } },
           h('div', { style: { animation: 'spinslow 20s linear infinite', width: '296px', height: '296px' } },
@@ -74,7 +102,7 @@ function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onIn
       h('div', { style: { textAlign: 'center' } },
         h('div', { style: { fontSize: '12px', letterSpacing: '.28em', textTransform: 'uppercase', color: '#7a5c28' } }, fmtWeekday(now)),
         h('div', { style: { fontFamily: "'Space Grotesk'", fontSize: '15px', color: '#4a3508', marginTop: '9px', letterSpacing: '.01em' } },
-          todayEntry ? 'Planted' : 'Tend to the good things'
+          'Tend to the good things'
         )
       ),
       h('button', {
@@ -87,15 +115,11 @@ function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onIn
         className: 'hov-subtle',
         style: { marginTop: '18px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
       }, 'view garden'),
-      installable && h('button', { onClick: onInstall, className: 'hov-subtle', style: subBtn }, 'install app'),
-      notifSupported && notifPerm === 'default' &&
-        h('button', { onClick: onSubscribe, className: 'hov-subtle', style: subBtn }, 'enable daily reminders'),
-      notifSupported && notifPerm === 'granted' &&
-        h('button', { onClick: onTestNotif, className: 'hov-subtle', style: subBtn }, 'test notification'),
-      notifSupported && notifPerm === 'granted' && pushSub &&
-        h('button', { onClick: () => navigator.clipboard.writeText(pushSub), className: 'hov-subtle', style: { ...subBtn, marginTop: '4px', fontSize: '11px', color: '#a08040' } }, 'copy subscription ↗'),
-      notifSupported && notifPerm === 'denied' &&
-        h('div', { style: { marginTop: '10px', alignSelf: 'center', fontSize: '11px', letterSpacing: '.16em', textTransform: 'uppercase', color: '#b08050', opacity: 0.7 } }, 'Notifications blocked in settings')
+      installable && h('button', {
+        onClick: onInstall,
+        className: 'hov-subtle',
+        style: { marginTop: '10px', alignSelf: 'center', fontSize: '12.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#8a6c30', transition: 'color .3s ease' }
+      }, 'install app')
     )
   );
 }
@@ -268,10 +292,10 @@ function CalendarScreen({ entries, todayKey, onToday, onDayClick }) {
     );
   });
 
-  return h(Shell, { bg: '#a0be7d' },
+  return h(Shell, { bg: '#fff0a0' },
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
       h('div', { style: { flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', scrollPaddingTop: '76px' } },
-        h('div', { style: { position: 'sticky', top: 0, zIndex: 2, background: '#a0be7d', padding: '26px 26px 16px', borderBottom: '1px solid rgba(0,0,0,.08)' } },
+        h('div', { style: { position: 'sticky', top: 0, zIndex: 2, background: '#fff0a0', padding: '26px 26px 16px', borderBottom: '1px solid rgba(0,0,0,.08)' } },
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
             h('button', { onClick: onToday, className: 'hov-nav', style: { fontSize: '13px', letterSpacing: '.22em', textTransform: 'uppercase', color: '#251d0e', transition: 'color .3s' } }, '← today'),
             h('span', { style: { fontSize: '11.5px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#251d0e' } }, 'your garden')

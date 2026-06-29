@@ -2,7 +2,7 @@
 const CACHE      = 'glade-v5';
 const FONT_CACHE = 'glade-fonts-v1';
 
-// ── Daily reminder quotes — add or edit freely ────────────────────────────────
+// ── Daily reminder quotes ────────────────────────────────
 const QUOTES = [
   'What made you smile today?',
   'Three small things. That\'s all it takes.',
