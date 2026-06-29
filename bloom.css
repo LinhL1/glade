@@ -1,0 +1,22 @@
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#e3c87a}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+input{font-family:inherit}
+input::placeholder{color:rgba(0,0,0,.35)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::selection{background:#1a1206;color:#e3c87a}
+
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes spinslow{to{transform:rotate(360deg)}}
+@keyframes bloomIn{0%{transform:scale(.15);opacity:0}55%{opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.hov-start:hover{opacity:.6;letter-spacing:.10em!important}
+.hov-subtle:hover{color:#5c4215!important}
+.hov-nav:hover{color:#1a1206!important}
+.hov-garden:hover{background:#1a1206!important;color:#e3c87a!important}
+.hov-action:hover{opacity:.78}
+.hov-species:hover{border-color:rgba(0,0,0,.3)!important}
+.hov-arrow:hover{color:#1a1206!important}
+.hov-calday:hover{border-color:rgba(0,0,0,.3)!important;background:rgba(0,0,0,.05)!important}
