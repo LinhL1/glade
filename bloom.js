@@ -147,9 +147,11 @@ function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue
     : { ...btnBase, background: 'rgba(0,0,0,.08)', color: 'rgba(0,0,0,.35)', cursor: 'default' };
   const btnLabel = canContinue ? 'plant in garden' : (filled === 0 ? 'write three things' : (3 - filled) + ' more to go');
 
-  const row = { display: 'flex', alignItems: 'flex-end', gap: '16px', borderBottom: '1px solid rgba(0,0,0,.2)', paddingBottom: '11px' };
-  const num = { fontFamily: "'Space Grotesk'", fontSize: '13px', color: '#7a4f00', letterSpacing: '.06em', paddingBottom: '3px', minWidth: '20px' };
-  const inp = { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#1a1206', fontSize: '17px', letterSpacing: '.005em' };
+  const row = { display: 'flex', alignItems: 'flex-start', gap: '16px', borderBottom: '1px solid rgba(0,0,0,.2)', paddingBottom: '11px', paddingTop: '4px' };
+  const num = { fontFamily: "'Space Grotesk'", fontSize: '13px', color: '#7a4f00', letterSpacing: '.06em', paddingTop: '3px', minWidth: '20px' };
+  const inp = { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#1a1206', fontSize: '17px', letterSpacing: '.005em', resize: 'none', overflow: 'hidden', lineHeight: '1.5', fontFamily: 'inherit', padding: 0, display: 'block' };
+  const grow = el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } };
+  const onGrow = e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; };
 
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '30px 30px 34px', animation: 'fadeIn .45s ease' } },
@@ -161,15 +163,15 @@ function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue
       h('div', { style: { marginTop: '38px', display: 'flex', flexDirection: 'column', gap: '26px' } },
         h('div', { style: row },
           h('span', { style: num }, '01'),
-          h('input', { value: it0, onChange: e => setIt0(e.target.value), placeholder: 'something small or large…', style: inp })
+          h('textarea', { ref: grow, value: it0, onChange: e => setIt0(e.target.value), onInput: onGrow, placeholder: 'something small or large…', rows: 1, style: inp })
         ),
         h('div', { style: row },
           h('span', { style: num }, '02'),
-          h('input', { value: it1, onChange: e => setIt1(e.target.value), placeholder: 'a person, a moment, a place…', style: inp })
+          h('textarea', { ref: grow, value: it1, onChange: e => setIt1(e.target.value), onInput: onGrow, placeholder: 'a person, a moment, a place…', rows: 1, style: inp })
         ),
         h('div', { style: row },
           h('span', { style: num }, '03'),
-          h('input', { value: it2, onChange: e => setIt2(e.target.value), placeholder: 'however ordinary it seems…', style: inp })
+          h('textarea', { ref: grow, value: it2, onChange: e => setIt2(e.target.value), onInput: onGrow, placeholder: 'however ordinary it seems…', rows: 1, style: inp })
         )
       ),
       h('div', { style: { flex: 1 } }),
@@ -341,9 +343,9 @@ function DayScreen({ dayKey, entries, onBack }) {
       ),
       h('div', { style: { marginTop: '34px', display: 'flex', flexDirection: 'column', gap: '22px' } },
         entry.items.map((text, i) =>
-          h('div', { key: i, style: { display: 'flex', gap: '16px', alignItems: 'baseline', borderBottom: '1px solid rgba(0,0,0,.12)', paddingBottom: '16px' } },
-            h('span', { style: { fontFamily: "'Space Grotesk'", fontSize: '13px', color: '#7a4f00', letterSpacing: '.06em', minWidth: '20px' } }, '0' + (i + 1)),
-            h('span', { style: { flex: 1, fontSize: '17px', lineHeight: 1.45, color: '#2a1e08', letterSpacing: '.005em' } }, text)
+          h('div', { key: i, style: { display: 'flex', gap: '16px', alignItems: 'flex-start', borderBottom: '1px solid rgba(0,0,0,.12)', paddingBottom: '16px' } },
+            h('span', { style: { fontFamily: "'Space Grotesk'", fontSize: '13px', color: '#7a4f00', letterSpacing: '.06em', minWidth: '20px', paddingTop: '2px' } }, '0' + (i + 1)),
+            h('span', { style: { flex: 1, fontSize: '17px', lineHeight: 1.45, color: '#2a1e08', letterSpacing: '.005em', wordBreak: 'break-word' } }, text)
           )
         )
       ),
@@ -442,7 +444,13 @@ function App() {
     if (!navigator.onLine) { setPlantErr("You're offline — connect to plant a new entry."); return; }
     setPlantErr('');
     const seed = (Date.now() % 1000000) + 1;
-    const species = seed % FLOWERS.length;
+    // Avoid flowers used in the last (N-1) days so the calendar stays varied
+    const recentSpecies = new Set(
+      Object.keys(entries).sort().slice(-(FLOWERS.length - 1)).map(d => entries[d].species)
+    );
+    const available = Array.from({ length: FLOWERS.length }, (_, i) => i).filter(i => !recentSpecies.has(i));
+    const pool = available.length > 0 ? available : Array.from({ length: FLOWERS.length }, (_, i) => i);
+    const species = pool[seed % pool.length];
     const newEntry = { items: [it0.trim(), it1.trim(), it2.trim()], species, seed };
 
     const { error } = await sb.from('entries').upsert(
