@@ -9,7 +9,7 @@ const FLOWERS = [
   'assets/flower3.png',
   'assets/flower4.png',
   //'assets/flower5.png',
-  'assets/flower6.png',
+  //'assets/flower6.png',
 ];
 
 // ── Push notifications ────────────────────────────────────────────────────────
@@ -24,6 +24,65 @@ function urlBase64ToUint8Array(b64) {
 function buildFlower(seed, spId, size, density) {
   const src = FLOWERS[seed % FLOWERS.length];
   return h('img', { src, width: size, height: size, style: { display: 'block', objectFit: 'contain' } });
+}
+
+// ── Confetti ─────────────────────────────────────────────────────────────────
+
+function Confetti({ trigger, origin }) {
+  const [show, setShow] = useState(false);
+
+  const pieces = useMemo(() => {
+    if (!trigger) return [];
+    const ox = origin && typeof origin.x === 'number' ? origin.x : window.innerWidth / 2;
+    const oy = origin && typeof origin.y === 'number' ? origin.y : window.innerHeight * 0.75;
+    // Radial pop centered on "up", spread wide left/right so pieces don't overlap
+    return Array.from({ length: 18 }, (_, i) => {
+      const angle = (-Math.PI / 2) + (Math.random() * 2 - 1) * (Math.PI * 0.72);
+      const burstDist = 140 + Math.random() * 200;
+      const bx = Math.cos(angle) * burstDist;
+      const by = Math.sin(angle) * burstDist;
+      const tx = bx * (1.15 + Math.random() * 0.4);
+      const ty = by + 460 + Math.random() * 320;
+      const rot = (Math.random() * 2 - 1) * 520;
+      const size = 32 + Math.random() * 24;
+      const duration = 2800 + Math.random() * 1000;
+      const delay = Math.random() * 260;
+      return { id: i, src: FLOWERS[Math.floor(Math.random() * FLOWERS.length)], ox, oy, bx, by, tx, ty, rot, size, duration, delay };
+    });
+  }, [trigger, origin]);
+
+  useEffect(() => {
+    if (!trigger) return;
+    setShow(true);
+    const t = setTimeout(() => setShow(false), 4300);
+    return () => clearTimeout(t);
+  }, [trigger]);
+
+  if (!show || pieces.length === 0) return null;
+
+  return h('div', { style: { position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 50 } },
+    pieces.map(p => h('img', {
+      key: p.id,
+      src: p.src,
+      width: p.size,
+      height: p.size,
+      style: {
+        position: 'absolute',
+        left: p.ox + 'px',
+        top: p.oy + 'px',
+        marginLeft: -(p.size / 2) + 'px',
+        marginTop: -(p.size / 2) + 'px',
+        objectFit: 'contain',
+        willChange: 'transform,opacity',
+        animation: 'confettiPiece ' + p.duration + 'ms linear ' + p.delay + 'ms both',
+        '--bx': p.bx + 'px',
+        '--by': p.by + 'px',
+        '--tx': p.tx + 'px',
+        '--ty': p.ty + 'px',
+        '--rot': p.rot + 'deg',
+      }
+    }))
+  );
 }
 
 const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -139,6 +198,10 @@ function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue
   const inp = { flex: 1, background: 'none', border: 'none', outline: 'none', color: '#1a1206', fontSize: '17px', letterSpacing: '.005em', resize: 'none', overflow: 'hidden', lineHeight: '1.5', fontFamily: 'inherit', padding: 0, display: 'block' };
   const grow = el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } };
   const onGrow = e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; };
+  const handlePlant = e => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    onContinue({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  };
 
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '30px 30px 34px', animation: 'fadeIn .45s ease' } },
@@ -163,7 +226,7 @@ function EntryScreen({ it0, it1, it2, setIt0, setIt1, setIt2, onBack, onContinue
       ),
       h('div', { style: { flex: 1 } }),
       h('button', {
-        onClick: canContinue ? onContinue : undefined,
+        onClick: canContinue ? handlePlant : undefined,
         className: canContinue ? 'hov-action' : '',
         style: btnStyle
       }, btnLabel),
@@ -279,7 +342,7 @@ function CalendarScreen({ entries, todayKey, onToday, onDayClick }) {
     },
       h('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '14px' } },
         h('h2', { style: { fontFamily: "'Space Grotesk'", fontWeight: 400, fontSize: '20px', color: '#1a1206', letterSpacing: '-.01em' } }, MONTHS_LONG[month] + ' ' + year),
-        bloomCount > 0 && h('span', { style: { fontSize: '11px', letterSpacing: '.2em', textTransform: 'uppercase', color: '#8a6c30' } }, bloomCount + (bloomCount === 1 ? ' bloom' : ' blooms'))
+        bloomCount > 0 && h('span', { style: { fontSize: '11px', letterSpacing: '.2em', textTransform: 'uppercase', color: '#8a6c30' } }, bloomCount + (bloomCount === 1 ? ' clover' : ' clovers'))
       ),
       h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '6px', marginBottom: '8px' } },
         ['S','M','T','W','T','F','S'].map((wd, i) =>
@@ -354,6 +417,8 @@ function App() {
   const [dayKey,      setDayKey]      = useState(null);
   const [savedKey,    setSavedKey]    = useState(null);
   const [plantErr,    setPlantErr]    = useState('');
+  const [confettiTick,   setConfettiTick]   = useState(0);
+  const [confettiOrigin, setConfettiOrigin] = useState(null);
   const [installable, setInstallable] = useState(false);
   const installPrompt = useRef(null);
 
@@ -424,7 +489,7 @@ function App() {
 
   const todayEntry = entries[todayKey];
 
-  const plant = useCallback(async () => {
+  const plant = useCallback(async (origin) => {
     setPlantErr('');
     const seed = (Date.now() % 1000000) + 1;
     // Avoid flowers used in the last (N-1) days so the calendar stays varied
@@ -447,6 +512,8 @@ function App() {
     setEntries(prev => ({ ...prev, [todayKey]: newEntry }));
     setSavedKey(todayKey);
     setScreen('saved');
+    setConfettiOrigin(origin || null);
+    setConfettiTick(t => t + 1);
   }, [entries, todayKey, it0, it1, it2]);
 
   const install = useCallback(() => {
@@ -457,12 +524,14 @@ function App() {
 
   if (!entriesReady) return h(LoadingScreen, null);
 
-  if (screen === 'welcome')  return h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install, notifPerm, pushSub, onSubscribe: subscribe, onTestNotif: testNotif });
-  if (screen === 'entry')    return h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
-  if (screen === 'saved')    return h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
-  if (screen === 'calendar') return h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
-  if (screen === 'day')      return h(DayScreen,      { dayKey, entries, onBack: () => setScreen('calendar') });
-  return null;
+  let screenEl = null;
+  if (screen === 'welcome')       screenEl = h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install, notifPerm, pushSub, onSubscribe: subscribe, onTestNotif: testNotif });
+  else if (screen === 'entry')    screenEl = h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
+  else if (screen === 'saved')    screenEl = h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
+  else if (screen === 'calendar') screenEl = h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
+  else if (screen === 'day')      screenEl = h(DayScreen,      { dayKey, entries, onBack: () => setScreen('calendar') });
+
+  return h(React.Fragment, null, screenEl, h(Confetti, { trigger: confettiTick, origin: confettiOrigin }));
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(App, null));
