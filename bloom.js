@@ -95,6 +95,55 @@ function fmtLong(d)    { return MONTHS_LONG[d.getMonth()]  + ' ' + d.getDate(); 
 function fmtWeekday(d) { return WEEKDAYS[d.getDay()]; }
 function fmtShort(d)   { return MONTHS_SHORT[d.getMonth()] + ' ' + d.getDate(); }
 
+// ── Sharing ──────────────────────────────────────────────────────────────────
+
+function buildShareText(dayKey, entry) {
+  const d = parseKey(dayKey);
+  const lines = entry.items.map((t, i) => '0' + (i + 1) + '  ' + t).join('\n');
+  return fmtWeekday(d) + ', ' + fmtLong(d) + ' — three good things\n\n' + lines + '\n\n🍀 grown in Glade';
+}
+
+function ShareIcon({ state }) {
+  const color = state === 'copied' ? '#4a3508' : '#8a6c30';
+  const common = { viewBox: '0 0 24 24', width: 20, height: 20, fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { display: 'block', transition: 'stroke .3s' } };
+  if (state === 'copied') {
+    return h('svg', common, h('polyline', { points: '20 6 9 17 4 12' }));
+  }
+  return h('svg', common,
+    h('path', { d: 'M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7' }),
+    h('polyline', { points: '16 6 12 2 8 6' }),
+    h('line', { x1: 12, y1: 2, x2: 12, y2: 15 })
+  );
+}
+
+function ShareButton({ dayKey, entry, style }) {
+  const [state, setState] = useState('idle');
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const onShare = useCallback(async () => {
+    const text = buildShareText(dayKey, entry);
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setState('copied');
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setState('idle'), 2200);
+    } catch (e) { console.error('Share failed:', e); }
+  }, [dayKey, entry]);
+
+  return h('button', {
+    onClick: onShare,
+    className: 'hov-subtle',
+    'aria-label': state === 'copied' ? 'copied' : 'share',
+    title: 'share',
+    style: { padding: '10px', ...style }
+  }, h(ShareIcon, { state }));
+}
+
 // ── Shell wrapper ────────────────────────────────────────────────────────────
 
 function Shell({ children, bg = '#e3c87a' }) {
@@ -253,7 +302,8 @@ function SavedScreen({ savedKey, entries, onCalendar }) {
         onClick: onCalendar,
         className: 'hov-garden',
         style: { animation: 'fadeUp .7s ease .75s both', marginTop: '40px', fontSize: '13px', letterSpacing: '.26em', textTransform: 'uppercase', color: '#1a1206', border: '1px solid rgba(0,0,0,.3)', borderRadius: '999px', padding: '13px 30px', transition: 'background .3s,color .3s' }
-      }, 'view garden')
+      }, 'view garden'),
+      entry && h(ShareButton, { dayKey: savedKey, entry, style: { animation: 'fadeUp .7s ease .95s both', marginTop: '22px' } })
     )
   );
 }
@@ -396,6 +446,7 @@ function DayScreen({ dayKey, entries, onBack }) {
           )
         )
       ),
+      h(ShareButton, { dayKey, entry, style: { alignSelf: 'center', marginTop: '30px' } }),
       h('div', { style: { flex: 1 } })
     )
   );
