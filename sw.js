@@ -1,6 +1,5 @@
 'use strict';
-const CACHE      = 'glade-v5';
-const FONT_CACHE = 'glade-fonts-v1';
+const CACHE = 'glade-v6';
 
 // ── Daily reminder quotes ────────────────────────────────
 const QUOTES = [
@@ -29,13 +28,17 @@ const SHELL = [
   'assets/flower2.png',
   'assets/flower3.png',
   'assets/flower4.png',
-  'assets/flower6.png',
   'assets/clover.png',
   'assets/clover-home.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/vendor/react.production.min.js',
   'assets/vendor/react-dom.production.min.js',
+  'assets/fonts/fonts.css',
+  'assets/fonts/space-grotesk-latin.woff2',
+  'assets/fonts/space-grotesk-latin-ext.woff2',
+  'assets/fonts/hanken-grotesk-latin.woff2',
+  'assets/fonts/hanken-grotesk-latin-ext.woff2',
 ];
 
 self.addEventListener('install', e => {
@@ -50,7 +53,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE && k !== FONT_CACHE).map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -58,26 +61,16 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
 
-  // Google Fonts — stale-while-revalidate
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
-    e.respondWith(
-      caches.open(FONT_CACHE).then(cache =>
-        cache.match(e.request).then(cached => {
-          const fresh = fetch(e.request)
-            .then(r => { cache.put(e.request, r.clone()); return r; })
-            .catch(() => cached);
-          return cached || fresh;
-        })
-      )
-    );
-    return;
-  }
-
-  // App shell and assets — cache first
+  // App shell and assets — cache first; navigations fall back to the cached shell
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request, { ignoreSearch: true }).then(cached => {
+      if (cached) return cached;
+      const fresh = fetch(e.request);
+      return e.request.mode === 'navigate'
+        ? fresh.catch(() => caches.match('./'))
+        : fresh;
+    })
   );
 });
 
