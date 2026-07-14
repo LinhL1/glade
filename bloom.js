@@ -100,7 +100,7 @@ function fmtShort(d)   { return MONTHS_SHORT[d.getMonth()] + ' ' + d.getDate(); 
 function buildShareText(dayKey, entry) {
   const d = parseKey(dayKey);
   const lines = entry.items.map((t, i) => '0' + (i + 1) + '  ' + t).join('\n');
-  return fmtWeekday(d) + ', ' + fmtLong(d) + ' — three good things\n\n' + lines + '\n\n🍀 grown in Glade';
+  return fmtWeekday(d) + ', ' + fmtLong(d) + ' — three good things\n\n' + lines + '\n\n🍀 All around us';
 }
 
 function ShareIcon({ state }) {
