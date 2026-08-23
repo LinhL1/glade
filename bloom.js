@@ -404,7 +404,7 @@ function CalendarScreen({ entries, todayKey, onToday, onDayClick }) {
   });
 
   return h(Shell, { bg: '#fff0a0' },
-    h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
+    h('div', { style: { height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
       h('div', { style: { flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', scrollPaddingTop: '76px' } },
         h('div', { style: { position: 'sticky', top: 0, zIndex: 2, background: '#fff0a0', padding: '26px 26px 16px', borderBottom: '1px solid rgba(0,0,0,.08)' } },
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
