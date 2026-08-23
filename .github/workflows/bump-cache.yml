@@ -1,0 +1,39 @@
+name: Auto-bump service worker cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'bloom.js'
+      - 'bloom.css'
+      - 'idb.js'
+      - 'manifest.json'
+      - 'assets/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: github.event.head_commit.author.name != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node bump-cache.js
+      - name: Commit bumped cache if changed
+        run: |
+          if ! git diff --quiet sw.js; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add sw.js
+            git commit -m "chore: auto-bump service worker cache"
+            git push
+          else
+            echo "No cache bump needed"
+          fi
