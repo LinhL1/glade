@@ -13,7 +13,8 @@ const FLOWERS = [
 ];
 
 // ── Push notifications ────────────────────────────────────────────────────────
-const VAPID_PUBLIC_KEY = 'BHynnjiZ6H7rr0WksiY_eukxZdEY9fKoX5zVYBFSEAs374uCCWpxrfijjXf-J2L8zi4w8CoM-wqf21YHOSHFuZo';
+const VAPID_PUBLIC_KEY = 'BGsZ02Ak2QYKdFy_yLQMunxUBFpETXfZt-KCqOI0yEA3QbcBbXmFuojmAqxm2Pd0Ih5co3c6nN2iK4Rfk4S8WJw';
+const WORKER_URL = 'https://glade-push.glade-log.workers.dev';
 
 function urlBase64ToUint8Array(b64) {
   const pad = '='.repeat((4 - b64.length % 4) % 4);
@@ -100,7 +101,7 @@ function fmtShort(d)   { return MONTHS_SHORT[d.getMonth()] + ' ' + d.getDate(); 
 function buildShareText(dayKey, entry) {
   const d = parseKey(dayKey);
   const lines = entry.items.map((t, i) => '0' + (i + 1) + '  ' + t).join('\n');
-  return fmtWeekday(d) + ', ' + fmtLong(d) + ' Today had some good in it. Here’s what I’m grateful for...\n\n' + lines + '\n\n';
+  return fmtWeekday(d) + ', ' + fmtLong(d) + ' - Today had some good in it. Here’s what I’m grateful for...\n\n' + lines + '\n\n';
 }
 
 function ShareIcon({ state }) {
@@ -512,7 +513,22 @@ function App() {
       const subJson = sub.toJSON();
       subJson.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setPushSub(JSON.stringify(subJson));
+
+      const res = await fetch(WORKER_URL + '/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subJson),
+      });
+      if (!res.ok) throw new Error('Worker rejected subscription: ' + res.status);
+
+      await reg.showNotification('Glade', {
+        body: 'Push notifications have been turned on.',
+        icon: 'assets/icon-192.png',
+        badge: 'assets/icon-192.png',
+      });
     } catch (e) {
+      // Subscription still succeeded locally (pushSub is set) even if registering
+      // with the backend failed — the "copy sub" button remains as a manual fallback.
       console.error('Push subscribe failed:', e);
     }
   }, []);

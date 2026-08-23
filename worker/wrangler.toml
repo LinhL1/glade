@@ -1,0 +1,10 @@
+name = "glade-push"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[[kv_namespaces]]
+binding = "SUBSCRIPTIONS"
+id = "6e49f984fd894bcb8b7a11ea484d27d4"
