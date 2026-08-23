@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'glade-f1627c31fbea';
+const CACHE = 'glade-78986701c914';
 
 // ── Daily reminder quotes ────────────────────────────────
 const QUOTES = [
