@@ -2,7 +2,7 @@ name: Daily push notification
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 6AM EST (Summer)
+    - cron: '0 * * * *'   # every hour; push-send.js only sends to subs whose local time is 9PM
   workflow_dispatch:        # also triggerable manually from GitHub Actions UI
 
 jobs:

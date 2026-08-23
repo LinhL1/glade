@@ -100,7 +100,7 @@ function fmtShort(d)   { return MONTHS_SHORT[d.getMonth()] + ' ' + d.getDate(); 
 function buildShareText(dayKey, entry) {
   const d = parseKey(dayKey);
   const lines = entry.items.map((t, i) => '0' + (i + 1) + '  ' + t).join('\n');
-  return fmtWeekday(d) + ', ' + fmtLong(d) + ' — three good things\n\n' + lines + '\n\n🍀 All around us';
+  return fmtWeekday(d) + ', ' + fmtLong(d) + ' Today had some good in it. Here’s what I’m grateful for...\n\n' + lines + '\n\n';
 }
 
 function ShareIcon({ state }) {
@@ -490,7 +490,12 @@ function App() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     navigator.serviceWorker.ready
       .then(reg => reg.pushManager.getSubscription())
-      .then(sub => { if (sub) setPushSub(JSON.stringify(sub)); })
+      .then(sub => {
+        if (!sub) return;
+        const subJson = sub.toJSON();
+        subJson.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setPushSub(JSON.stringify(subJson));
+      })
       .catch(() => {});
   }, []);
 
@@ -504,7 +509,9 @@ function App() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
-      setPushSub(JSON.stringify(sub));
+      const subJson = sub.toJSON();
+      subJson.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setPushSub(JSON.stringify(subJson));
     } catch (e) {
       console.error('Push subscribe failed:', e);
     }
