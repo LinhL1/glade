@@ -176,26 +176,30 @@ function BellIcon({ active, denied }) {
   );
 }
 
-function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall, notifPerm, pushSub, onSubscribe, onTestNotif }) {
+function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onInstall, notifPerm, pushSub, onSubscribe, onUnsubscribe, onTestNotif }) {
   const notifSupported = typeof Notification !== 'undefined' && 'PushManager' in window;
-  const active  = notifSupported && notifPerm === 'granted';
   const denied  = notifSupported && notifPerm === 'denied';
-  const pending = notifSupported && notifPerm === 'default';
-  const [showCopy, setShowCopy] = useState(false);
+  const active  = notifSupported && !denied && !!pushSub;
+  const pending = notifSupported && !denied && !pushSub;
+  const [showPanel, setShowPanel] = useState(false);
 
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
       h('div', { style: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '36px' } },
         notifSupported && h('div', { style: { position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' } },
           h('button', {
-            onClick: active ? () => setShowCopy(v => !v) : pending ? onSubscribe : null,
+            onClick: active ? () => setShowPanel(v => !v) : pending ? onSubscribe : null,
             style: { padding: '4px', cursor: (active || pending) ? 'pointer' : 'default', transition: 'opacity .3s' },
-            title: active ? 'Toggle subscription info' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
+            title: active ? 'Manage daily reminders' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
           }, h(BellIcon, { active, denied })),
-          active && pushSub && showCopy && h('button', {
-            onClick: () => { navigator.clipboard.writeText(pushSub); setShowCopy(false); },
+          active && pushSub && showPanel && h('button', {
+            onClick: () => { navigator.clipboard.writeText(pushSub); setShowPanel(false); },
             style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
-          }, 'copy sub')
+          }, 'copy sub'),
+          active && pushSub && showPanel && h('button', {
+            onClick: () => { onUnsubscribe(); setShowPanel(false); },
+            style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
+          }, 'turn off')
         ),
         h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade')
       ),
@@ -533,6 +537,27 @@ function App() {
     }
   }, []);
 
+  const unsubscribe = useCallback(async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        const endpoint = sub.endpoint;
+        await sub.unsubscribe();
+        // Best-effort — if this fails, the worker's send loop will drop the
+        // stale entry itself the next time it gets a 404/410 from it.
+        fetch(WORKER_URL + '/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint }),
+        }).catch(() => {});
+      }
+      setPushSub(null);
+    } catch (e) {
+      console.error('Push unsubscribe failed:', e);
+    }
+  }, []);
+
   const testNotif = useCallback(async () => {
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -599,7 +624,7 @@ function App() {
   if (!entriesReady) return h(LoadingScreen, null);
 
   let screenEl = null;
-  if (screen === 'welcome')       screenEl = h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install, notifPerm, pushSub, onSubscribe: subscribe, onTestNotif: testNotif });
+  if (screen === 'welcome')       screenEl = h(WelcomeScreen,  { todayEntry, now, onStart: () => setScreen('entry'), onCalendar: () => setScreen('calendar'), installable, onInstall: install, notifPerm, pushSub, onSubscribe: subscribe, onUnsubscribe: unsubscribe, onTestNotif: testNotif });
   else if (screen === 'entry')    screenEl = h(EntryScreen,    { it0, it1, it2, setIt0, setIt1, setIt2, now, onBack: () => setScreen('welcome'), onContinue: plant, err: plantErr });
   else if (screen === 'saved')    screenEl = h(SavedScreen,    { savedKey, entries, onCalendar: () => setScreen('calendar') });
   else if (screen === 'calendar') screenEl = h(CalendarScreen, { entries, todayKey, onToday: () => setScreen('welcome'), onDayClick: k => { setDayKey(k); setScreen('day'); } });
