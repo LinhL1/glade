@@ -185,16 +185,12 @@ function WelcomeScreen({ todayEntry, now, onStart, onCalendar, installable, onIn
   return h(Shell, null,
     h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 30px 44px', animation: 'fadeIn .6s ease' } },
       h('div', { style: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '36px' } },
-        notifSupported && h('div', { style: { position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' } },
+        notifSupported && h('div', { style: { position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' } },
           h('button', {
             onClick: active ? onUnsubscribe : pending ? onSubscribe : null,
             style: { padding: '4px', cursor: (active || pending) ? 'pointer' : 'default', transition: 'opacity .3s' },
             title: active ? 'Turn off daily reminders' : denied ? 'Notifications blocked in settings' : 'Enable daily reminders'
-          }, h(BellIcon, { active, denied })),
-          active && pushSub && h('button', {
-            onClick: () => navigator.clipboard.writeText(pushSub),
-            style: { fontSize: '9px', letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(74,53,8,0.35)', paddingLeft: '4px', transition: 'color .3s' }
-          }, 'copy sub')
+          }, h(BellIcon, { active, denied }))
         ),
         h('div', { style: { textAlign: 'center', fontFamily: "'Space Grotesk'", fontSize: '21px', letterSpacing: '.42em', textIndent: '.42em', color: '#1a1206', fontWeight: 500 } }, 'Glade')
       ),
@@ -526,8 +522,6 @@ function App() {
         badge: 'assets/icon-192.png',
       });
     } catch (e) {
-      // Subscription still succeeded locally (pushSub is set) even if registering
-      // with the backend failed — the "copy sub" button remains as a manual fallback.
       console.error('Push subscribe failed:', e);
     }
   }, []);
