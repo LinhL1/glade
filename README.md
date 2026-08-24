@@ -29,4 +29,5 @@ A simple daily gratitude log + practice. Every day, write down three things you'
 
 Once installed, Glade opens from your home screen like any other app that also works offline :)
 
-Tend to the good things
+
+(Take a look around, lots to be grateful for)
